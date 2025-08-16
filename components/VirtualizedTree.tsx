@@ -5,7 +5,7 @@ import type React from "react"
 import { useMemo, useCallback, useRef, useEffect } from "react"
 import { FixedSizeList as List } from "react-window"
 import { Button } from "@/components/ui/button"
-import { Copy, ChevronRight, ChevronDown } from "lucide-react"
+import { Copy, ChevronRight, ChevronDown, Clipboard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -194,7 +194,7 @@ export function VirtualizedTree({ data, searchTerm, expandedNodes, onToggleNode,
             }}
             className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mr-2"
           >
-            <Copy className="h-3 w-3" />
+            <Clipboard className="h-3 w-3" />
           </Button>
         </div>
       )
@@ -221,7 +221,14 @@ export function VirtualizedTree({ data, searchTerm, expandedNodes, onToggleNode,
   }
 
   return (
-    <List ref={listRef} height={height} itemCount={filteredItems.length} itemSize={ITEM_HEIGHT} className="scrollbar">
+    <List
+      ref={listRef}
+      height={height}
+      width="100%"
+      itemCount={filteredItems.length}
+      itemSize={ITEM_HEIGHT}
+      className="scrollbar"
+    >
       {Row}
     </List>
   )

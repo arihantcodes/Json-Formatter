@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, Download, Share2, Copy, Trash2, Settings, CheckCircle, XCircle, Link } from "lucide-react"
+import { Upload, Download, Share2, Copy, Trash2, Settings, CheckCircle, XCircle, Link, Clipboard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getShareUrl } from "@/lib/share"
 
@@ -258,7 +258,7 @@ export function Toolbar({
               disabled={!parsedData?.formatted}
               className="h-8 px-2 bg-transparent"
             >
-              <Copy className="h-3 w-3" />
+              <Clipboard className="h-3 w-3" />
             </Button>
             <Button
               size="sm"

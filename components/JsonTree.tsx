@@ -25,6 +25,7 @@ import {
   Brackets,
   Braces,
   Zap,
+  Clipboard,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -328,7 +329,7 @@ export function JsonTree({ data, formatOptions }: JsonTreeProps) {
               Collapse
             </Button>
             <Button size="sm" variant="outline" onClick={handleCopyFormatted} className="h-7 bg-transparent">
-              <Copy className="h-3 w-3 mr-1" />
+              <Clipboard className="h-3 w-3 mr-1" />
               Copy
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowRawJson(!showRawJson)} className="h-7">
@@ -523,7 +524,7 @@ function TreeNode({
           onClick={() => handleCopyValue(data)}
           className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <Copy className="h-3 w-3" />
+          <Clipboard className="h-3 w-3" />
         </Button>
       </motion.div>
     )
@@ -569,7 +570,7 @@ function TreeNode({
           }}
           className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <Copy className="h-3 w-3" />
+          <Clipboard className="h-3 w-3" />
         </Button>
       </div>
 

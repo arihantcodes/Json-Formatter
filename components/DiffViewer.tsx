@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -33,6 +35,134 @@ export function DiffViewer({ className }: DiffViewerProps) {
   }, [leftJson, rightJson])
 
   const stats = useMemo(() => getDiffStats(diffs), [diffs])
+
+  const renderGitHubStyleDiff = () => {
+    if (!leftJson || !rightJson) return null
+
+    const leftLines = JSON.stringify(leftJson, null, 2).split("\n")
+    const rightLines = JSON.stringify(rightJson, null, 2).split("\n")
+    const diffMap = new Map<string, DiffResult>()
+
+    // Create a map of paths to diff results for quick lookup
+    diffs.forEach((diff) => {
+      const pathKey = formatDiffPath(diff.path)
+      diffMap.set(pathKey, diff)
+    })
+
+    return (
+      <div className="border rounded-lg overflow-hidden bg-background">
+        <div className="bg-muted px-4 py-2 border-b">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <FileText className="h-4 w-4" />
+            Diff View
+          </div>
+        </div>
+        <div className="grid grid-cols-2 divide-x">
+          <div>
+            <div className="bg-red-50 dark:bg-red-950/20 px-2 py-1 text-xs font-medium text-red-800 dark:text-white border-b">
+              Original
+            </div>
+            <ScrollArea className="h-[500px]">
+              <pre className="text-xs bg-black text-white p-2 leading-relaxed">{renderJsonWithHighlights(leftJson, "removed")}</pre>
+            </ScrollArea>
+          </div>
+          <div>
+            <div className="bg-green-50 dark:bg-green-950/20 px-2 py-1 text-xs font-medium text-green-800 dark:text-green-200 border-b">
+              Modified
+            </div>
+            <ScrollArea className="h-[500px]">
+              <pre className="text-xs bg-black text-white p-2  leading-relaxed">{renderJsonWithHighlights(rightJson, "added")}</pre>
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderJsonWithHighlights = (obj: any, diffType: "added" | "removed", path: string[] = []): React.ReactNode => {
+    if (obj === null) return <span className="text-gray-500 ">null</span>
+    if (typeof obj === "string") return <span className="text-[#99FFE4]">"{obj}"</span>
+    if (typeof obj === "number") return <span className="text-[#99FFE4]">{obj}</span>
+    if (typeof obj === "boolean") return <span className="text-[#99FFE4]">{obj.toString()}</span>
+
+    if (Array.isArray(obj)) {
+      return (
+        <span>
+          {"[\n"}
+          {obj.map((item, index) => {
+            const currentPath = [...path, index.toString()]
+            const pathKey = formatDiffPath(currentPath)
+            const diff = diffs.find((d) => formatDiffPath(d.path) === pathKey)
+            const isHighlighted =
+              diff &&
+              ((diffType === "added" && (diff.type === "added" || diff.type === "modified")) ||
+                (diffType === "removed" && (diff.type === "removed" || diff.type === "modified")))
+
+            return (
+              <span key={index}>
+                {"  "}
+                <span className={isHighlighted ? getHighlightClass(diff?.type || "unchanged", diffType) : ""}>
+                  {renderJsonWithHighlights(item, diffType, currentPath)}
+                </span>
+                {index < obj.length - 1 ? "," : ""}
+                {"\n"}
+              </span>
+            )
+          })}
+          {"]"}
+        </span>
+      )
+    }
+
+    if (typeof obj === "object") {
+      const entries = Object.entries(obj)
+      return (
+        <span>
+          {"{\n"}
+          {entries.map(([key, value], index) => {
+            const currentPath = [...path, key]
+            const pathKey = formatDiffPath(currentPath)
+            const diff = diffs.find((d) => formatDiffPath(d.path) === pathKey)
+            const isHighlighted =
+              diff &&
+              ((diffType === "added" && (diff.type === "added" || diff.type === "modified")) ||
+                (diffType === "removed" && (diff.type === "removed" || diff.type === "modified")))
+
+            return (
+              <span key={key}>
+                {"  "}
+                <span className={isHighlighted ? getHighlightClass(diff?.type || "unchanged", diffType) : ""}>
+                  <span className="text-[#FEC798]">"{key}"</span>
+                  {": "}
+                  {renderJsonWithHighlights(value, diffType, currentPath)}
+                </span>
+                {index < entries.length - 1 ? "," : ""}
+                {"\n"}
+              </span>
+            )
+          })}
+          {"}"}
+        </span>
+      )
+    }
+
+    return <span>{String(obj)}</span>
+  }
+
+  const getHighlightClass = (diffType: string, side: "added" | "removed"): string => {
+    if (diffType === "added" && side === "added") {
+      return "bg-green-900 px-1 rounded"
+    }
+    if (diffType === "removed" && side === "removed") {
+      return "bg-red-900 px-1 rounded"
+    }
+    if (diffType === "modified") {
+      return side === "added"
+        ? "bg-green-900 px-1 rounded"
+        : "bg-red-900  px-1 rounded"
+    }
+    return ""
+  }
 
   const parseInput = async (input: string, side: "left" | "right") => {
     if (!input.trim()) {
@@ -233,11 +363,16 @@ export function DiffViewer({ className }: DiffViewerProps) {
               <CardTitle className="text-sm">Differences</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="list" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs defaultValue="github" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="github">GitHub Style</TabsTrigger>
                   <TabsTrigger value="list">List View</TabsTrigger>
                   <TabsTrigger value="side-by-side">Side by Side</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="github" className="mt-4">
+                  {renderGitHubStyleDiff()}
+                </TabsContent>
 
                 <TabsContent value="list" className="mt-4">
                   <ScrollArea className="h-[400px]">

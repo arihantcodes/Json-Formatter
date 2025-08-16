@@ -9,8 +9,8 @@ import { usePathname } from "next/navigation";
 const Navbar = () => {
   const pathname = usePathname();
   return (
-    <div className="border-b border-dotted border-border py-3 cursor-pointer ">
-      <div className="flex justify-between items-center px-4 md:px-6 lg:px-8">
+    <div className="border-b border-dashed border-border py-1 cursor-pointer w-full ">
+      <div className="flex justify-between items-center px-4 md:px-6 lg:px-4">
         <div className="hidden md:block">
           <nav className=" items-center gap-4 text-sm xl:gap-6 hidden md:flex">
             <Link

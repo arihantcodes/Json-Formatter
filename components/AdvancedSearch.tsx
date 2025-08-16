@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Copy, History, Trash2, BookOpen, Target, Filter, Key, Hash } from "lucide-react"
+import { Search, History, Trash2, BookOpen, Target, Filter, Key, Hash, Clipboard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { JsonSearcher, SearchHistory, type SearchResult, type SearchOptions } from "@/lib/search"
 
@@ -396,7 +396,7 @@ export function AdvancedSearch({ data, onResultSelect, className }: AdvancedSear
                             }}
                             className="h-7 px-2"
                           >
-                            <Copy className="h-3 w-3" />
+                            <Clipboard className="h-3 w-3" />
                           </Button>
                         </div>
                       </motion.div>

@@ -20,6 +20,10 @@ import { convertToJson } from "@/lib/convert";
 import { formatJson } from "@/lib/pretty";
 import { loadStateFromUrl, getShareUrl } from "@/lib/share";
 import { parseWorker, shouldUseWorker } from "@/lib/worker";
+import { WebSocketTesting } from "@/components/WebSocketTesting";
+import { GraphQLPlayground } from "@/components/GraphQLPlayground";
+import { PerformanceTesting } from "@/components/PerformanceTesting";
+import { ApiMonitoring } from "@/components/ApiMonitoring";
 
 export interface ParsedData {
   json: any;
@@ -361,20 +365,35 @@ export default function JsonFormatterPage() {
 
   return (
     <>
-      <div className="min-h-screen">
-        <div className="container mx-auto p-4 max-w-7xl">
+      <div className=" bg-background">
+        <div className="container p-4 max-w-7xl">
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full"
+            className="w-full h-full"
           >
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="formatter">Formatter</TabsTrigger>
-              <TabsTrigger value="diff">Diff Viewer</TabsTrigger>
-              <TabsTrigger value="api">API Integration</TabsTrigger>
+            <TabsList className="flex justify-evenly w-full overflow-x-auto mb-6 space-x-2 sm:grid sm:grid-cols-6 sm:space-x-0">
+              <TabsTrigger value="formatter" className="flex-shrink-0">
+                Formatter
+              </TabsTrigger>
+              <TabsTrigger value="diff" className="flex-shrink-0">
+                Diff Viewer
+              </TabsTrigger>
+              <TabsTrigger value="api" className="flex-shrink-0">
+                API Integration
+              </TabsTrigger>
+              <TabsTrigger value="websocket" className="flex-shrink-0">
+                WebSocket
+              </TabsTrigger>
+              <TabsTrigger value="graphql" className="flex-shrink-0">
+                GraphQL
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="flex-shrink-0">
+                Performance
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="formatter" className="space-y-4">
+            <TabsContent value="formatter" className="space-y-4 h-full">
               {showProgress && (
                 <motion.div
                   className="mb-4 p-3 bg-card border rounded-lg"
@@ -390,7 +409,7 @@ export default function JsonFormatterPage() {
                 </motion.div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-280px)]">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 ">
                 <motion.div
                   className="space-y-4"
                   initial={{ opacity: 0, x: -20 }}
@@ -439,14 +458,26 @@ export default function JsonFormatterPage() {
             </TabsContent>
 
             <TabsContent value="diff" className="space-y-4">
-              <DiffViewer className="h-[calc(100vh-280px)]" />
+              <DiffViewer className="" />
             </TabsContent>
 
             <TabsContent value="api" className="space-y-4">
               <ApiIntegration
                 onDataReceived={handleApiDataReceived}
-                className="h-[calc(100vh-280px)]"
+                className=""
               />
+            </TabsContent>
+
+            <TabsContent value="websocket" className="space-y-4">
+              <WebSocketTesting className="" />
+            </TabsContent>
+
+            <TabsContent value="graphql" className="space-y-4">
+              <GraphQLPlayground className="" />
+            </TabsContent>
+
+            <TabsContent value="performance" className="space-y-4">
+              <PerformanceTesting className="" />
             </TabsContent>
           </Tabs>
 

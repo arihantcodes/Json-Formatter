@@ -6,6 +6,7 @@ import "./globals.css";
 import Navbar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Analytics } from "@vercel/analytics/next"
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title:
@@ -162,11 +163,24 @@ export default function RootLayout({
           content="width=device-width, initial-scale=1, maximum-scale=5"
         />
       </head>
-      <body className="font-sans container-wrapper">
+      <body className="font-sans ">
         
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <div className="container mx-auto px-4 sm:px-6 lg:px-4 py-5 border-x border-border border-dashed">
           <Navbar />
+
           {children}
+          <footer className="mt-10 border-t border-dashed border-border pt-6 text-center text-sm text-muted-foreground">
+           <h1>
+            Backed by 
+            <Link href="http://ui.spectrumhq.in/" className="text-sky-500 ml-1">
+            Spectrum UI
+            </Link>
+           </h1>
+           
+            </footer>
+
+          </div>
           <Analytics/>
         </ThemeProvider>
       </body>
