@@ -5,7 +5,7 @@ import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
-import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title:
@@ -163,10 +163,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans container-wrapper">
+        
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Navbar />
           {children}
-        
+          <Analytics/>
         </ThemeProvider>
       </body>
     </html>

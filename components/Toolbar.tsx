@@ -140,7 +140,7 @@ export function Toolbar({
 
   return (
     <div className="space-y-4 p-4 bg-card border rounded-lg">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row gap-5  md:gap-1 md:items-center justify-between">
         <div className="flex items-center gap-2">
           <Settings className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">Format Options</span>
@@ -161,7 +161,7 @@ export function Toolbar({
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:gap-1">
           <HistoryControls
             canUndo={canUndo}
             canRedo={canRedo}
