@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://json.spectrumhq.in/sitemap.xml
+
+# Optimize crawl budget
+Crawl-delay: 1
+
+# Block unnecessary paths
+Disallow: /api/
+Disallow: /_next/
+Disallow: /static/
