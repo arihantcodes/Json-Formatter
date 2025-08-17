@@ -365,7 +365,7 @@ export default function JsonFormatterPage() {
 
   return (
     <>
-      <div className=" bg-background">
+      <div className="min-h-screen bg-background">
         <div className="container p-4 max-w-7xl">
           <Tabs
             value={activeTab}

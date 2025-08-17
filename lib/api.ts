@@ -169,11 +169,36 @@ export class ApiClient {
           }
         }
 
-        // Added specific CORS error handling
-        if (error.message.includes("CORS") || error.message.includes("fetch")) {
+        if (
+          error.message.includes("CORS") ||
+          error.message.includes("fetch") ||
+          error.message.includes("NetworkError")
+        ) {
+          const isLocalhost =
+            request.url.includes("localhost") || request.url.includes("127.0.0.1") || request.url.includes("0.0.0.0")
+
+          let corsMessage = `CORS Error: ${error.message}.`
+
+          if (isLocalhost) {
+            corsMessage += ` 
+
+🔧 **Localhost API Solutions:**
+1. Enable CORS proxy option above
+2. Add CORS headers to your API server
+3. Use browser extensions like "CORS Unblock"
+4. Test with Postman/Insomnia instead
+
+**For Express.js servers, add:**
+\`\`\`javascript
+app.use(cors({ origin: '*' }))
+\`\`\``
+          } else {
+            corsMessage += ` The API server may not allow requests from this domain. Contact the API provider or use a CORS proxy.`
+          }
+
           return {
             success: false,
-            error: `CORS Error: ${error.message}. The API server may not allow requests from this domain. Try using a CORS proxy or test with a tool like Postman.`,
+            error: corsMessage,
             responseTime,
           }
         }
