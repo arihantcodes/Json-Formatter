@@ -170,13 +170,19 @@ export default function RootLayout({
           <Navbar />
 
           {children}
-          <footer className="mt-10 border-t border-dashed border-border pt-6 text-center text-sm text-muted-foreground">
+          <footer className="flex justify-between mt-10 border-t border-dashed border-border pt-6 text-center text-sm text-muted-foreground">
            <h1>
             Backed by 
             <Link href="http://ui.spectrumhq.in/" className="text-sky-500 ml-1">
             Spectrum UI
             </Link>
            </h1>
+
+           
+          <Link href="https://x.com/arihantCodes" className="">
+          Follow me on Twitter
+          <span className="text-sky-500 ml-1">@arihantcodes</span>
+          </Link>
            
             </footer>
 
