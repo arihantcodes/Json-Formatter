@@ -7,6 +7,7 @@ import Navbar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Analytics } from "@vercel/analytics/next"
 import Link from "next/link";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata: Metadata = {
   title:
@@ -164,7 +165,8 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans ">
-        
+      <Analytics />
+      <SpeedInsights />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="container mx-auto px-4 sm:px-6 lg:px-4 py-5 border-x border-border border-dashed">
           <Navbar />
