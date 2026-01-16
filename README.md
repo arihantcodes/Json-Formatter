@@ -1,6 +1,8 @@
+<h1 align="center">JSON Formatter</h1>
+
 ![JSON Formatter Tool](public/jsontool.png)
 
-# JSON Formatter
+
 
 All-in-one JSON toolkit. Format, validate, convert, and test APIs—all in your browser.
 
