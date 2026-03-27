@@ -1,3 +1,12 @@
+import {
+  isPostmanCollection,
+  isPostmanEnvironment,
+  convertPostmanCollection,
+  convertPostmanEnvironment,
+  type PostmanCollection,
+  type PostmanEnvironment,
+} from "./postman"
+
 export interface RequestCollection {
     id: string
     name: string
@@ -333,7 +342,12 @@ export interface RequestCollection {
     static importCollection(jsonData: string): RequestCollection | null {
       try {
         const data = JSON.parse(jsonData)
-  
+
+        // Check if this is a Postman collection
+        if (isPostmanCollection(data)) {
+          return this.importPostmanCollection(jsonData)
+        }
+
         if (data.collection) {
           const collection = {
             ...data.collection,
@@ -341,15 +355,53 @@ export interface RequestCollection {
             createdAt: Date.now(),
             updatedAt: Date.now(),
           }
-  
+
           const collections = this.getCollections()
           collections.push(collection)
           localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
-  
+
           return collection
         }
-  
+
         return null
+      } catch {
+        return null
+      }
+    }
+
+    static importPostmanCollection(jsonData: string): RequestCollection | null {
+      try {
+        const data = JSON.parse(jsonData) as PostmanCollection
+
+        if (!isPostmanCollection(data)) {
+          return null
+        }
+
+        const collection = convertPostmanCollection(data)
+        const collections = this.getCollections()
+        collections.push(collection)
+        localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+
+        return collection
+      } catch {
+        return null
+      }
+    }
+
+    static importPostmanEnvironment(jsonData: string): Environment | null {
+      try {
+        const data = JSON.parse(jsonData) as PostmanEnvironment
+
+        if (!isPostmanEnvironment(data)) {
+          return null
+        }
+
+        const environment = convertPostmanEnvironment(data)
+        const environments = this.getEnvironments()
+        environments.push(environment)
+        localStorage.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
+
+        return environment
       } catch {
         return null
       }
