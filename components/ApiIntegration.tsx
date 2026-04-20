@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,14 +28,18 @@ import {
   Upload,
   Code,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ApiClient, EndpointStorage, type ApiRequest, type ApiResponse, type SavedEndpoint } from "@/lib/api"
 import { CodeGeneration } from "./CodeGenration"
+import { CollectionManager, type CollectionRequest } from "@/lib/collection"
 
 interface ApiIntegrationProps {
   onDataReceived: (data: string) => void
   className?: string
+  selectedCollectionRequest?: CollectionRequest | null
 }
 
 interface QueryParam {
@@ -46,7 +50,27 @@ interface QueryParam {
 
 type BodyType = "none" | "json" | "form-data" | "x-www-form-urlencoded" | "raw" | "binary"
 
-export function ApiIntegration({ onDataReceived, className }: ApiIntegrationProps) {
+function isSensitiveHeader(key: string): boolean {
+  const lower = key.toLowerCase()
+  return lower === "authorization" ||
+    lower.includes("key") ||
+    lower.includes("token") ||
+    lower.includes("secret") ||
+    lower.includes("password")
+}
+
+function maskHeaderValue(value: string): string {
+  if (value.length <= 8) return "***"
+  const bearerMatch = value.match(/^(Bearer\s+)(.+)$/i)
+  if (bearerMatch) {
+    const token = bearerMatch[2]
+    if (token.length <= 8) return `${bearerMatch[1]}***`
+    return `${bearerMatch[1]}${token.slice(0, 4)}***${token.slice(-4)}`
+  }
+  return `${value.slice(0, 4)}***${value.slice(-4)}`
+}
+
+export function ApiIntegration({ onDataReceived, className, selectedCollectionRequest }: ApiIntegrationProps) {
   const [request, setRequest] = useState<ApiRequest>({
     url: "",
     method: "GET",
@@ -57,6 +81,56 @@ export function ApiIntegration({ onDataReceived, className }: ApiIntegrationProp
 
   const [queryParams, setQueryParams] = useState<QueryParam[]>([])
   const [bodyType, setBodyType] = useState<BodyType>("none")
+  const [revealedHeaders, setRevealedHeaders] = useState<Set<string>>(new Set())
+
+
+  // Interpolate a value using the current active environment (called at render/send time)
+  const interpolateValue = useCallback((text: string): string => {
+    const activeEnv = CollectionManager.getActiveEnvironment()
+    if (!activeEnv) return text
+    return CollectionManager.interpolateVariables(text, activeEnv)
+  }, [])
+
+  // Load postman collection request when selected — store RAW templates, interpolate at render/send time
+  useEffect(() => {
+    if (selectedCollectionRequest) {
+      setRevealedHeaders(new Set())
+
+      // Store raw template values — NOT interpolated
+      const originalHeaders = selectedCollectionRequest.headers || {}
+      const finalHeaders = Object.keys(originalHeaders).length > 0
+        ? { ...originalHeaders }
+        : ApiClient.getCommonHeaders()
+
+      setRequest({
+        url: selectedCollectionRequest.url,
+        method: selectedCollectionRequest.method,
+        headers: finalHeaders,
+        body: selectedCollectionRequest.body || "",
+        timeout: 30000,
+      })
+
+      if (selectedCollectionRequest.queryParams && selectedCollectionRequest.queryParams.length > 0) {
+        setQueryParams(selectedCollectionRequest.queryParams.map(param => ({
+          ...param,
+        })))
+      } else {
+        setQueryParams([])
+      }
+
+      // Set body type based on content
+      if (selectedCollectionRequest.body) {
+        try {
+          JSON.parse(selectedCollectionRequest.body)
+          setBodyType("json")
+        } catch {
+          setBodyType("raw")
+        }
+      } else {
+        setBodyType("none")
+      }
+    }
+  }, [selectedCollectionRequest])
   const [formData, setFormData] = useState<
     Array<{ key: string; value: string; type: "text" | "file"; enabled: boolean }>
   >([])
@@ -216,25 +290,55 @@ export function ApiIntegration({ onDataReceived, className }: ApiIntegrationProp
     setResponse(null)
 
     try {
-      let finalUrl = request.url
+      // Interpolate any {{VAR}} patterns in headers/url/body using current environment
+      const activeEnv = CollectionManager.getActiveEnvironment()
+      const interpolateNow = (text: string): string => {
+        if (!activeEnv) return text
+        return CollectionManager.interpolateVariables(text, activeEnv)
+      }
+
+      const sendHeaders: Record<string, string> = {}
+      Object.entries(request.headers).forEach(([key, value]) => {
+        sendHeaders[interpolateNow(key)] = interpolateNow(value)
+      })
+
+      // Warn if any {{VAR}} templates are still unresolved
+      const unresolvedVars: string[] = []
+      Object.entries(sendHeaders).forEach(([key, value]) => {
+        const matches = value.match(/\{\{(\w+)\}\}/g)
+        if (matches) unresolvedVars.push(...matches)
+      })
+      if (unresolvedVars.length > 0) {
+        const envInfo = activeEnv
+          ? `Active env: "${activeEnv.name}" (${activeEnv.variables.filter(v => v.enabled).map(v => v.key).join(", ")})`
+          : "No active environment set"
+        toast({
+          title: "Unresolved variables",
+          description: `${unresolvedVars.join(", ")} not found. ${envInfo}`,
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
+      let finalUrl = interpolateNow(request.url)
       const isLocalhost =
-        request.url.includes("localhost") || request.url.includes("127.0.0.1") || request.url.includes("0.0.0.0")
+        finalUrl.includes("localhost") || finalUrl.includes("127.0.0.1") || finalUrl.includes("0.0.0.0")
 
       if (useCorsProxy && isLocalhost) {
-        finalUrl = corsProxyUrl + request.url
+        finalUrl = corsProxyUrl + finalUrl
       }
 
-      const requestWithBody = {
-        ...request,
+      const rawBody = getRequestBody()
+      const safeBody = typeof rawBody === "string" ? interpolateNow(rawBody) : undefined
+
+      const result = await ApiClient.makeRequest({
         url: finalUrl,
-        body: getRequestBody(),
-      }
-
-      // Fix: Ensure requestWithBody.body is always a string or undefined, not FormData
-      const { body, ...rest } = requestWithBody;
-      const safeBody = body instanceof FormData ? undefined : body;
-
-      const result = await ApiClient.makeRequest({ ...rest, body: safeBody });
+        method: request.method,
+        headers: sendHeaders,
+        body: safeBody,
+        timeout: request.timeout,
+      });
       setResponse(result);
 
       if (result.success && result.data) {
@@ -474,8 +578,9 @@ export function ApiIntegration({ onDataReceived, className }: ApiIntegrationProp
         )}
 
         <Tabs defaultValue="request" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="request">Request</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="response">Response</TabsTrigger>
             <TabsTrigger value="code">Code</TabsTrigger>
             <TabsTrigger value="saved">Saved</TabsTrigger>
@@ -664,25 +769,65 @@ export function ApiIntegration({ onDataReceived, className }: ApiIntegrationProp
 
                     <ScrollArea className="h-32">
                       <div className="space-y-1">
-                        {Object.entries(request.headers).map(([key, value]) => (
-                          <div key={key} className="flex gap-1">
-                            <Input
-                              placeholder="Header name"
-                              value={key}
-                              onChange={(e) => updateHeader(key, e.target.value, value)}
-                              className="h-7 text-xs"
-                            />
-                            <Input
-                              placeholder="Header value"
-                              value={value}
-                              onChange={(e) => updateHeader(key, key, e.target.value)}
-                              className="h-7 text-xs"
-                            />
-                            <Button size="sm" variant="outline" onClick={() => removeHeader(key)} className="h-7 px-2">
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
+                        {Object.entries(request.headers).map(([key, value]) => {
+                          const sensitive = isSensitiveHeader(key)
+                          const revealed = revealedHeaders.has(key)
+                          const hasTemplate = value.includes("{{")
+                          const interpolated = interpolateValue(value)
+                          const displayValue = sensitive && !revealed ? maskHeaderValue(interpolated) : interpolated
+
+                          return (
+                            <div key={key} className="space-y-0.5">
+                              <div className="flex gap-1">
+                                <Input
+                                  placeholder="Header name"
+                                  value={key}
+                                  onChange={(e) => updateHeader(key, e.target.value, value)}
+                                  className="h-7 text-xs"
+                                />
+                                <Input
+                                  placeholder="Header value"
+                                  value={displayValue}
+                                  onChange={(e) => updateHeader(key, key, e.target.value)}
+                                  className="h-7 text-xs font-mono"
+                                  readOnly={sensitive && !revealed}
+                                />
+                                {sensitive && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      setRevealedHeaders((prev) => {
+                                        const next = new Set(prev)
+                                        if (next.has(key)) next.delete(key)
+                                        else next.add(key)
+                                        return next
+                                      })
+                                    }
+                                    className="h-7 px-2"
+                                  >
+                                    {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => removeHeader(key)} className="h-7 px-2">
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              {hasTemplate && (
+                                <div className="text-[10px] text-muted-foreground font-mono pl-1">
+                                  <span className="text-blue-500">{value}</span>
+                                  {" → "}
+                                  <span className={interpolated === value ? "text-red-500" : "text-green-500"}>
+                                    {sensitive ? maskHeaderValue(interpolated) : interpolated}
+                                  </span>
+                                  {interpolated === value && (
+                                    <span className="text-red-500 ml-1">(env variable not found)</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </ScrollArea>
                   </div>
@@ -802,6 +947,101 @@ export function ApiIntegration({ onDataReceived, className }: ApiIntegrationProp
                       step="1000"
                     />
                     <span className="text-xs text-muted-foreground">ms</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="preview" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    Request Preview
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      const previewText = `${request.method} ${request.url}\n\n` +
+                        `Headers:\n${Object.entries(request.headers).map(([k, v]) => `  ${k}: ${v}`).join('\n')}\n\n` +
+                        `Body:\n${getRequestBody() || '(empty)'}`;
+                      await navigator.clipboard.writeText(previewText);
+                      toast({ title: "Copied", description: "Request preview copied to clipboard" });
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">Method & URL</Label>
+                    <div className="mt-1 p-3 bg-muted rounded-lg font-mono text-sm break-all">
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-bold mr-2 bg-primary text-primary-foreground">
+                        {request.method}
+                      </span>
+                      {request.url || <span className="text-muted-foreground italic">No URL specified</span>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      Headers ({Object.keys(request.headers).length})
+                    </Label>
+                    <ScrollArea className="mt-1 h-32">
+                      <div className="p-3 bg-muted rounded-lg font-mono text-xs space-y-1">
+                        {Object.keys(request.headers).length > 0 ? (
+                          Object.entries(request.headers).map(([key, value]) => (
+                            <div key={key} className="flex">
+                              <span className="text-blue-600 dark:text-blue-400 min-w-[140px]">{key}:</span>
+                              <span className="text-green-600 dark:text-green-400 break-all">
+                                {isSensitiveHeader(key) ? maskHeaderValue(interpolateValue(value)) : interpolateValue(value)}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground italic">No headers</span>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      Request Body {bodyType !== "none" && `(${bodyType})`}
+                    </Label>
+                    <ScrollArea className="mt-1 h-48">
+                      <pre className="p-3 bg-muted rounded-lg font-mono text-xs whitespace-pre-wrap break-all">
+                        {(() => {
+                          const body = getRequestBody();
+                          if (!body) return <span className="text-muted-foreground italic">No body</span>;
+                          if (typeof body === "string") {
+                            try {
+                              return JSON.stringify(JSON.parse(body), null, 2);
+                            } catch {
+                              return body;
+                            }
+                          }
+                          return String(body);
+                        })()}
+                      </pre>
+                    </ScrollArea>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">cURL Command</Label>
+                    <div className="mt-1 p-3 bg-muted rounded-lg font-mono text-xs break-all">
+                      <code>
+                        curl -X {request.method} &apos;{request.url}&apos;
+                        {Object.entries(request.headers).map(([k, v]) => { const iv = interpolateValue(v); return ` \\\n  -H '${k}: ${isSensitiveHeader(k) ? maskHeaderValue(iv) : iv}'` }).join('')}
+                        {getRequestBody() && ` \\\n  -d '${typeof getRequestBody() === 'string' ? getRequestBody() : ''}'`}
+                      </code>
+                    </div>
                   </div>
                 </div>
               </CardContent>

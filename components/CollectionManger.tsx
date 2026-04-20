@@ -24,6 +24,11 @@ import {
   ChevronRight,
   ChevronDown,
   FileText,
+  Pencil,
+  Check,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -31,8 +36,10 @@ import {
   type RequestCollection,
   type CollectionRequest,
   type Environment,
+  type EnvironmentVariable,
   type CollectionFolder,
 } from "@/lib/collection"
+import { isPostmanCollection, isPostmanEnvironment } from "@/lib/postman"
 
 interface CollectionManagerProps {
   onRequestSelected: (request: CollectionRequest) => void
@@ -49,6 +56,9 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
   const [newCollectionName, setNewCollectionName] = useState("")
   const [newEnvironmentName, setNewEnvironmentName] = useState("")
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null)
+  const [editingEnvironmentId, setEditingEnvironmentId] = useState<string | null>(null)
+  const [editingVariables, setEditingVariables] = useState<EnvironmentVariable[]>([])
+  const [revealedSecrets, setRevealedSecrets] = useState<Set<number>>(new Set())
 
   const { toast } = useToast()
 
@@ -184,18 +194,30 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
       const reader = new FileReader()
       reader.onload = (e) => {
         const content = e.target?.result as string
-        const collection = CollectionManager.importCollection(content)
 
-        if (collection) {
-          setCollections(CollectionManager.getCollections())
-          toast({
-            title: "Collection imported",
-            description: `"${collection.name}" has been imported`,
-          })
-        } else {
+        try {
+          const data = JSON.parse(content)
+          const isPostman = isPostmanCollection(data)
+
+          const collection = CollectionManager.importCollection(content)
+
+          if (collection) {
+            setCollections(CollectionManager.getCollections())
+            toast({
+              title: isPostman ? "Postman collection imported" : "Collection imported",
+              description: `"${collection.name}" has been imported${isPostman ? " from Postman format" : ""}`,
+            })
+          } else {
+            toast({
+              title: "Import failed",
+              description: "Invalid collection file format",
+              variant: "destructive",
+            })
+          }
+        } catch {
           toast({
             title: "Import failed",
-            description: "Invalid collection file format",
+            description: "Invalid JSON file",
             variant: "destructive",
           })
         }
@@ -205,6 +227,116 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
     },
     [toast],
   )
+
+  const importEnvironment = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const content = e.target?.result as string
+
+        try {
+          const data = JSON.parse(content)
+          const isPostman = isPostmanEnvironment(data)
+
+          if (isPostman) {
+            const environment = CollectionManager.importPostmanEnvironment(content)
+
+            if (environment) {
+              // Auto-activate the imported environment if no environment is currently active
+              const currentActive = CollectionManager.getActiveEnvironment()
+              if (!currentActive) {
+                CollectionManager.setActiveEnvironment(environment.id)
+                setActiveEnvironment(CollectionManager.getActiveEnvironment())
+              }
+
+              setEnvironments(CollectionManager.getEnvironments())
+              toast({
+                title: "Postman environment imported",
+                description: `"${environment.name}" has been imported${!currentActive ? " and activated" : ""}`,
+              })
+            } else {
+              toast({
+                title: "Import failed",
+                description: "Failed to import Postman environment",
+                variant: "destructive",
+              })
+            }
+          } else {
+            toast({
+              title: "Import failed",
+              description: "Invalid Postman environment file format",
+              variant: "destructive",
+            })
+          }
+        } catch {
+          toast({
+            title: "Import failed",
+            description: "Invalid JSON file",
+            variant: "destructive",
+          })
+        }
+      }
+      reader.readAsText(file)
+      event.target.value = ""
+    },
+    [toast],
+  )
+
+  const startEditingEnvironment = useCallback((env: Environment) => {
+    setEditingEnvironmentId(env.id)
+    setEditingVariables(env.variables.map((v) => ({ ...v })))
+    setRevealedSecrets(new Set())
+  }, [])
+
+  const cancelEditingEnvironment = useCallback(() => {
+    setEditingEnvironmentId(null)
+    setEditingVariables([])
+    setRevealedSecrets(new Set())
+  }, [])
+
+  const saveEnvironmentVariables = useCallback(() => {
+    if (!editingEnvironmentId) return
+
+    CollectionManager.updateEnvironment(editingEnvironmentId, { variables: editingVariables })
+    setEnvironments(CollectionManager.getEnvironments())
+    setActiveEnvironment(CollectionManager.getActiveEnvironment())
+    setEditingEnvironmentId(null)
+    setEditingVariables([])
+    setRevealedSecrets(new Set())
+
+    toast({
+      title: "Environment updated",
+      description: "Variables have been saved",
+    })
+  }, [editingEnvironmentId, editingVariables, toast])
+
+  const updateEditingVariable = useCallback((index: number, field: keyof EnvironmentVariable, value: string | boolean) => {
+    setEditingVariables((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
+  }, [])
+
+  const addEditingVariable = useCallback(() => {
+    setEditingVariables((prev) => [...prev, { key: "", value: "", enabled: true, type: "default" }])
+  }, [])
+
+  const removeEditingVariable = useCallback((index: number) => {
+    setEditingVariables((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const toggleSecretVisibility = useCallback((index: number) => {
+    setRevealedSecrets((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }, [])
 
   const toggleCollection = useCallback((id: string) => {
     setExpandedCollections((prev) => {
@@ -382,19 +514,19 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
     <div className={className}>
       <Tabs defaultValue="collections" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="collections">Collections</TabsTrigger>
-          <TabsTrigger value="environments">Environments</TabsTrigger>
+          <TabsTrigger value="collections">Postman Collections</TabsTrigger>
+          <TabsTrigger value="environments">Postman Environments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="collections" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Request Collections</CardTitle>
+                <CardTitle className="text-sm">Postman Collections</CardTitle>
                 <div className="flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => document.getElementById("import-file")?.click()}>
                     <Upload className="h-3 w-3 mr-1" />
-                    Import
+                    Import Postman
                   </Button>
                   <input id="import-file" type="file" accept=".json" onChange={importCollection} className="hidden" />
                 </div>
@@ -434,8 +566,8 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No collections found</p>
-                      <p className="text-xs">Create a collection to organize your API requests</p>
+                      <p className="text-sm">No Postman collections found</p>
+                      <p className="text-xs">Import a Postman collection to get started</p>
                     </div>
                   )}
                 </div>
@@ -447,10 +579,17 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
         <TabsContent value="environments" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Environment Management
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Postman Environments
+                </CardTitle>
+                <Button size="sm" variant="outline" onClick={() => document.getElementById("import-env-file")?.click()}>
+                  <Upload className="h-3 w-3 mr-1" />
+                  Import
+                </Button>
+                <input id="import-env-file" type="file" accept=".json" onChange={importEnvironment} className="hidden" />
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {activeEnvironment && (
@@ -481,51 +620,154 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
                 </Button>
               </div>
 
-              <ScrollArea className="h-64">
+              <ScrollArea className="h-96">
                 <div className="space-y-2">
                   {environments.map((environment) => (
                     <motion.div
                       key={environment.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="border rounded-lg overflow-hidden"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{environment.name}</span>
-                          {environment.isActive && (
-                            <Badge variant="default" className="text-xs">
-                              Active
-                            </Badge>
-                          )}
+                      <div className="flex items-center justify-between p-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">{environment.name}</span>
+                            {environment.isActive && (
+                              <Badge variant="default" className="text-xs">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{environment.variables.length} variables</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{environment.variables.length} variables</p>
-                      </div>
-                      <div className="flex gap-1">
-                        {!environment.isActive && (
+                        <div className="flex gap-1">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setActiveEnv(environment.id)}
+                            onClick={() =>
+                              editingEnvironmentId === environment.id
+                                ? cancelEditingEnvironment()
+                                : startEditingEnvironment(environment)
+                            }
                             className="h-7 px-2"
                           >
-                            Activate
+                            <Pencil className="h-3 w-3" />
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            if (confirm(`Delete environment "${environment.name}"?`)) {
-                              CollectionManager.deleteEnvironment(environment.id)
-                              setEnvironments(CollectionManager.getEnvironments())
-                            }
-                          }}
-                          className="h-7 px-2"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                          {!environment.isActive && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setActiveEnv(environment.id)}
+                              className="h-7 px-2"
+                            >
+                              Activate
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (confirm(`Delete environment "${environment.name}"?`)) {
+                                CollectionManager.deleteEnvironment(environment.id)
+                                setEnvironments(CollectionManager.getEnvironments())
+                              }
+                            }}
+                            className="h-7 px-2"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
+
+                      <AnimatePresence>
+                        {editingEnvironmentId === environment.id && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="border-t"
+                          >
+                            <div className="p-3 space-y-2">
+                              <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
+                                <span>Key</span>
+                                <span>Value</span>
+                                <span></span>
+                                <span></span>
+                              </div>
+                              {editingVariables.map((variable, index) => (
+                                <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+                                  <Input
+                                    value={variable.key}
+                                    onChange={(e) => updateEditingVariable(index, "key", e.target.value)}
+                                    placeholder="Variable name"
+                                    className="h-8 text-sm font-mono"
+                                  />
+                                  <div className="relative">
+                                    <Input
+                                      type={variable.type === "secret" && !revealedSecrets.has(index) ? "password" : "text"}
+                                      value={variable.value}
+                                      onChange={(e) => updateEditingVariable(index, "value", e.target.value)}
+                                      placeholder="Value"
+                                      className="h-8 text-sm font-mono pr-8"
+                                    />
+                                    {variable.type === "secret" && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="absolute right-0 top-0 h-8 w-8 p-0"
+                                        onClick={() => toggleSecretVisibility(index)}
+                                      >
+                                        {revealedSecrets.has(index) ? (
+                                          <EyeOff className="h-3 w-3" />
+                                        ) : (
+                                          <Eye className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() =>
+                                      updateEditingVariable(index, "enabled", !variable.enabled)
+                                    }
+                                  >
+                                    <Check
+                                      className={`h-3 w-3 ${variable.enabled ? "text-green-600" : "text-muted-foreground opacity-40"}`}
+                                    />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => removeEditingVariable(index)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <div className="flex justify-between pt-2">
+                                <Button size="sm" variant="outline" onClick={addEditingVariable} className="h-7">
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add Variable
+                                </Button>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={cancelEditingEnvironment} className="h-7">
+                                    <X className="h-3 w-3 mr-1" />
+                                    Cancel
+                                  </Button>
+                                  <Button size="sm" onClick={saveEnvironmentVariables} className="h-7">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   ))}
                 </div>

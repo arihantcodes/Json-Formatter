@@ -24,6 +24,8 @@ import { WebSocketTesting } from "@/components/WebSocketTesting";
 import { GraphQLPlayground } from "@/components/GraphQLPlayground";
 import { PerformanceTesting } from "@/components/PerformanceTesting";
 import { ApiMonitoring } from "@/components/ApiMonitoring";
+import { CollectionManagerComponent } from "@/components/CollectionManger";
+import type { CollectionRequest } from "@/lib/collection";
 
 export interface ParsedData {
   json: any;
@@ -74,6 +76,7 @@ export default function JsonFormatterPage() {
   const [parseProgress, setParseProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("formatter");
+  const [selectedCollectionRequest, setSelectedCollectionRequest] = useState<CollectionRequest | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
@@ -317,9 +320,27 @@ export default function JsonFormatterPage() {
     (data: string) => {
       setInput(data);
       handleParse(data);
-      setActiveTab("formatter"); // Switch to formatter tab to show the result
+      if (selectedCollectionRequest) {
+        // Postman request — stay on API tab so user sees the response there
+        setSelectedCollectionRequest(null);
+      } else {
+        setActiveTab("formatter"); // Switch to formatter tab to show the result
+      }
     },
-    [setInput, handleParse]
+    [setInput, handleParse, selectedCollectionRequest]
+  );
+
+  const handleCollectionRequestSelected = useCallback(
+    (request: CollectionRequest) => {
+      // Store the selected request and switch to API Integration tab
+      setSelectedCollectionRequest(request);
+      setActiveTab("api");
+      toast({
+        title: "Request loaded",
+        description: `"${request.name}" loaded into API Integration`,
+      });
+    },
+    [toast]
   );
 
   const calculateStats = (json: any, formatted: string) => {
@@ -372,9 +393,12 @@ export default function JsonFormatterPage() {
             onValueChange={setActiveTab}
             className="w-full h-full"
           >
-            <TabsList className="flex justify-evenly w-full overflow-x-auto mb-6 space-x-2 sm:grid sm:grid-cols-6 sm:space-x-0">
+            <TabsList className="flex justify-evenly w-full overflow-x-auto mb-6 space-x-2 sm:grid sm:grid-cols-7 sm:space-x-0">
               <TabsTrigger value="formatter" className="flex-shrink-0">
                 Formatter
+              </TabsTrigger>
+              <TabsTrigger value="collections" className="flex-shrink-0">
+                Postman
               </TabsTrigger>
               <TabsTrigger value="diff" className="flex-shrink-0">
                 Diff Viewer
@@ -457,6 +481,12 @@ export default function JsonFormatterPage() {
               </div>
             </TabsContent>
 
+            <TabsContent value="collections" className="space-y-4">
+              <CollectionManagerComponent
+                onRequestSelected={handleCollectionRequestSelected}
+              />
+            </TabsContent>
+
             <TabsContent value="diff" className="space-y-4">
               <DiffViewer className="" />
             </TabsContent>
@@ -464,6 +494,7 @@ export default function JsonFormatterPage() {
             <TabsContent value="api" className="space-y-4">
               <ApiIntegration
                 onDataReceived={handleApiDataReceived}
+                selectedCollectionRequest={selectedCollectionRequest}
                 className=""
               />
             </TabsContent>
