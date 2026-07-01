@@ -1,3 +1,5 @@
+import { store } from "./storage"
+
 export interface GraphQLSchema {
     types: GraphQLType[]
     queryType?: GraphQLType
@@ -411,12 +413,12 @@ export interface GraphQLSchema {
         queries.push(query)
       }
   
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(queries))
+      store.setItem(this.STORAGE_KEY, JSON.stringify(queries))
     }
   
     static getQueries(): GraphQLQuery[] {
       try {
-        const stored = localStorage.getItem(this.STORAGE_KEY)
+        const stored = store.getItem(this.STORAGE_KEY)
         if (!stored) return []
   
         return JSON.parse(stored).map((q: any) => ({
@@ -431,11 +433,11 @@ export interface GraphQLSchema {
   
     static deleteQuery(id: string): void {
       const queries = this.getQueries().filter((q) => q.id !== id)
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(queries))
+      store.setItem(this.STORAGE_KEY, JSON.stringify(queries))
     }
   
     static clearQueries(): void {
-      localStorage.removeItem(this.STORAGE_KEY)
+      store.removeItem(this.STORAGE_KEY)
     }
   }
   

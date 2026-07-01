@@ -1,3 +1,5 @@
+import { store } from "./storage"
+
 export interface MonitorConfig {
     id: string
     name: string
@@ -410,7 +412,7 @@ export interface MonitorConfig {
           incidents: Array.from(this.incidents.entries()),
           alerts: Array.from(this.alerts.entries()),
         }
-        localStorage.setItem("api_monitoring", JSON.stringify(data))
+        store.setItem("api_monitoring", JSON.stringify(data))
       } catch (error) {
         console.error("Failed to save monitoring data:", error)
       }
@@ -418,7 +420,7 @@ export interface MonitorConfig {
   
     loadFromStorage(): void {
       try {
-        const stored = localStorage.getItem("api_monitoring")
+        const stored = store.getItem("api_monitoring")
         if (!stored) return
   
         const data = JSON.parse(stored)
