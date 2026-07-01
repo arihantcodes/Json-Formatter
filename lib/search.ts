@@ -1,3 +1,5 @@
+import { store } from "./storage"
+
 export interface SearchResult {
   path: string[]
   value: any
@@ -267,7 +269,7 @@ export class SearchHistory {
 
   static getHistory(): string[] {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY)
+      const stored = store.getItem(this.STORAGE_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -282,7 +284,7 @@ export class SearchHistory {
       const filtered = history.filter((item) => item !== query)
       const newHistory = [query, ...filtered].slice(0, this.MAX_HISTORY)
 
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(newHistory))
+      store.setItem(this.STORAGE_KEY, JSON.stringify(newHistory))
     } catch {
       // Ignore storage errors
     }
@@ -290,7 +292,7 @@ export class SearchHistory {
 
   static clearHistory(): void {
     try {
-      localStorage.removeItem(this.STORAGE_KEY)
+      store.removeItem(this.STORAGE_KEY)
     } catch {
       // Ignore storage errors
     }

@@ -1,3 +1,5 @@
+import { store } from "./storage"
+
 export interface ApiRequest {
   url: string
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
@@ -300,7 +302,7 @@ app.use(cors({ origin: '*' }))
 
   static getHeaderPresets(): HeaderPreset[] {
     try {
-      const stored = localStorage.getItem("json-formatter-header-presets")
+      const stored = store.getItem("json-formatter-header-presets")
       return stored ? JSON.parse(stored) : this.getDefaultHeaderPresets()
     } catch {
       return this.getDefaultHeaderPresets()
@@ -356,18 +358,18 @@ app.use(cors({ origin: '*' }))
       id: crypto.randomUUID(),
     }
     presets.push(newPreset)
-    localStorage.setItem("json-formatter-header-presets", JSON.stringify(presets))
+    store.setItem("json-formatter-header-presets", JSON.stringify(presets))
     return newPreset
   }
 
   static deleteHeaderPreset(id: string): void {
     const presets = this.getHeaderPresets().filter((p) => p.id !== id)
-    localStorage.setItem("json-formatter-header-presets", JSON.stringify(presets))
+    store.setItem("json-formatter-header-presets", JSON.stringify(presets))
   }
 
   static getEnvironmentVariables(): EnvironmentVariable[] {
     try {
-      const stored = localStorage.getItem("json-formatter-env-vars")
+      const stored = store.getItem("json-formatter-env-vars")
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -384,12 +386,12 @@ app.use(cors({ origin: '*' }))
       envVars.push(envVar)
     }
 
-    localStorage.setItem("json-formatter-env-vars", JSON.stringify(envVars))
+    store.setItem("json-formatter-env-vars", JSON.stringify(envVars))
   }
 
   static deleteEnvironmentVariable(key: string): void {
     const envVars = this.getEnvironmentVariables().filter((v) => v.key !== key)
-    localStorage.setItem("json-formatter-env-vars", JSON.stringify(envVars))
+    store.setItem("json-formatter-env-vars", JSON.stringify(envVars))
   }
 
   static interpolateVariables(text: string, variables: EnvironmentVariable[]): string {
@@ -459,7 +461,7 @@ export class EndpointStorage {
 
   static getEndpoints(): SavedEndpoint[] {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY)
+      const stored = store.getItem(this.STORAGE_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -475,13 +477,13 @@ export class EndpointStorage {
     }
 
     endpoints.push(newEndpoint)
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(endpoints))
+    store.setItem(this.STORAGE_KEY, JSON.stringify(endpoints))
     return newEndpoint
   }
 
   static deleteEndpoint(id: string): void {
     const endpoints = this.getEndpoints().filter((ep) => ep.id !== id)
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(endpoints))
+    store.setItem(this.STORAGE_KEY, JSON.stringify(endpoints))
   }
 
   static updateEndpoint(id: string, updates: Partial<SavedEndpoint>): void {
@@ -490,7 +492,7 @@ export class EndpointStorage {
 
     if (index !== -1) {
       endpoints[index] = { ...endpoints[index], ...updates }
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(endpoints))
+      store.setItem(this.STORAGE_KEY, JSON.stringify(endpoints))
     }
   }
 }

@@ -1,3 +1,5 @@
+import { store } from "./storage"
+
 import {
   isPostmanCollection,
   isPostmanEnvironment,
@@ -74,7 +76,7 @@ export interface RequestCollection {
     // Collection Management
     static getCollections(): RequestCollection[] {
       try {
-        const stored = localStorage.getItem(this.COLLECTIONS_KEY)
+        const stored = store.getItem(this.COLLECTIONS_KEY)
         return stored ? JSON.parse(stored) : []
       } catch {
         return []
@@ -91,7 +93,7 @@ export interface RequestCollection {
       }
   
       collections.push(newCollection)
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
       return newCollection
     }
   
@@ -105,13 +107,13 @@ export interface RequestCollection {
           ...updates,
           updatedAt: Date.now(),
         }
-        localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+        store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
       }
     }
   
     static deleteCollection(id: string): void {
       const collections = this.getCollections().filter((c) => c.id !== id)
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
     }
   
     static duplicateCollection(id: string): RequestCollection | null {
@@ -137,7 +139,7 @@ export interface RequestCollection {
       }
   
       collections.push(duplicate)
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
       return duplicate
     }
   
@@ -161,7 +163,7 @@ export interface RequestCollection {
       collection.requests.push(newRequest)
       collection.updatedAt = Date.now()
   
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
       return newRequest
     }
   
@@ -179,7 +181,7 @@ export interface RequestCollection {
           updatedAt: Date.now(),
         }
         collection.updatedAt = Date.now()
-        localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+        store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
       }
     }
   
@@ -191,7 +193,7 @@ export interface RequestCollection {
   
       collection.requests = collection.requests.filter((r) => r.id !== requestId)
       collection.updatedAt = Date.now()
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
     }
   
     // Folder Management
@@ -209,7 +211,7 @@ export interface RequestCollection {
       collection.folders.push(newFolder)
       collection.updatedAt = Date.now()
   
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
       return newFolder
     }
   
@@ -228,13 +230,13 @@ export interface RequestCollection {
       })
   
       collection.updatedAt = Date.now()
-      localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+      store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
     }
   
     // Environment Management
     static getEnvironments(): Environment[] {
       try {
-        const stored = localStorage.getItem(this.ENVIRONMENTS_KEY)
+        const stored = store.getItem(this.ENVIRONMENTS_KEY)
         return stored ? JSON.parse(stored) : this.getDefaultEnvironments()
       } catch {
         return this.getDefaultEnvironments()
@@ -290,7 +292,7 @@ export interface RequestCollection {
       }
   
       environments.push(newEnvironment)
-      localStorage.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
+      store.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
       return newEnvironment
     }
   
@@ -300,13 +302,13 @@ export interface RequestCollection {
   
       if (index !== -1) {
         environments[index] = { ...environments[index], ...updates }
-        localStorage.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
+        store.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
       }
     }
   
     static deleteEnvironment(id: string): void {
       const environments = this.getEnvironments().filter((e) => e.id !== id)
-      localStorage.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
+      store.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
     }
   
     static setActiveEnvironment(id: string): void {
@@ -314,8 +316,8 @@ export interface RequestCollection {
       environments.forEach((env) => {
         env.isActive = env.id === id
       })
-      localStorage.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
-      localStorage.setItem(this.ACTIVE_ENV_KEY, id)
+      store.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
+      store.setItem(this.ACTIVE_ENV_KEY, id)
     }
   
     static getActiveEnvironment(): Environment | null {
@@ -358,7 +360,7 @@ export interface RequestCollection {
 
           const collections = this.getCollections()
           collections.push(collection)
-          localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+          store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
 
           return collection
         }
@@ -380,7 +382,7 @@ export interface RequestCollection {
         const collection = convertPostmanCollection(data)
         const collections = this.getCollections()
         collections.push(collection)
-        localStorage.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
+        store.setItem(this.COLLECTIONS_KEY, JSON.stringify(collections))
 
         return collection
       } catch {
@@ -399,7 +401,7 @@ export interface RequestCollection {
         const environment = convertPostmanEnvironment(data)
         const environments = this.getEnvironments()
         environments.push(environment)
-        localStorage.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
+        store.setItem(this.ENVIRONMENTS_KEY, JSON.stringify(environments))
 
         return environment
       } catch {

@@ -20,6 +20,7 @@ import { convertToJson } from "@/lib/convert";
 import { formatJson } from "@/lib/pretty";
 import { loadStateFromUrl, getShareUrl } from "@/lib/share";
 import { parseWorker, shouldUseWorker } from "@/lib/worker";
+import { hydrateStore } from "@/lib/storage";
 import { WebSocketTesting } from "@/components/WebSocketTesting";
 import { GraphQLPlayground } from "@/components/GraphQLPlayground";
 import { PerformanceTesting } from "@/components/PerformanceTesting";
@@ -80,6 +81,12 @@ export default function JsonFormatterPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  // Load the durable IndexedDB store into memory and migrate any pre-existing
+  // localStorage data on first run (local-first storage foundation).
+  useEffect(() => {
+    void hydrateStore();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

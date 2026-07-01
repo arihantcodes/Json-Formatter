@@ -40,6 +40,7 @@ import {
   type CollectionFolder,
 } from "@/lib/collection"
 import { isPostmanCollection, isPostmanEnvironment } from "@/lib/postman"
+import { store } from "@/lib/storage"
 
 interface CollectionManagerProps {
   onRequestSelected: (request: CollectionRequest) => void
@@ -63,9 +64,14 @@ export function CollectionManagerComponent({ onRequestSelected, className }: Col
   const { toast } = useToast()
 
   useEffect(() => {
-    setCollections(CollectionManager.getCollections())
-    setEnvironments(CollectionManager.getEnvironments())
-    setActiveEnvironment(CollectionManager.getActiveEnvironment())
+    const refresh = () => {
+      setCollections(CollectionManager.getCollections())
+      setEnvironments(CollectionManager.getEnvironments())
+      setActiveEnvironment(CollectionManager.getActiveEnvironment())
+    }
+    refresh()
+    // Re-read once the IndexedDB store hydrates (and on any external write).
+    return store.subscribe(refresh)
   }, [])
 
   const createCollection = useCallback(() => {

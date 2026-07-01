@@ -1,3 +1,5 @@
+import { store } from "./storage"
+
 export interface PerformanceTestConfig {
     id: string
     name: string
@@ -414,12 +416,12 @@ export interface PerformanceTestConfig {
         tests.push(config)
       }
   
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tests))
+      store.setItem(this.STORAGE_KEY, JSON.stringify(tests))
     }
   
     static getTests(): PerformanceTestConfig[] {
       try {
-        const stored = localStorage.getItem(this.STORAGE_KEY)
+        const stored = store.getItem(this.STORAGE_KEY)
         return stored ? JSON.parse(stored) : []
       } catch {
         return []
@@ -428,7 +430,7 @@ export interface PerformanceTestConfig {
   
     static deleteTest(id: string): void {
       const tests = this.getTests().filter((t) => t.id !== id)
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tests))
+      store.setItem(this.STORAGE_KEY, JSON.stringify(tests))
     }
   
     static saveResult(result: PerformanceTestResult): void {
@@ -447,12 +449,12 @@ export interface PerformanceTestConfig {
         results.splice(0, results.length - 50)
       }
   
-      localStorage.setItem(this.RESULTS_KEY, JSON.stringify(results))
+      store.setItem(this.RESULTS_KEY, JSON.stringify(results))
     }
   
     static getResults(): any[] {
       try {
-        const stored = localStorage.getItem(this.RESULTS_KEY)
+        const stored = store.getItem(this.RESULTS_KEY)
         return stored ? JSON.parse(stored) : []
       } catch {
         return []
@@ -460,7 +462,7 @@ export interface PerformanceTestConfig {
     }
   
     static clearResults(): void {
-      localStorage.removeItem(this.RESULTS_KEY)
+      store.removeItem(this.RESULTS_KEY)
     }
   }
   
