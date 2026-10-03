@@ -19,29 +19,5 @@ All-in-one JSON toolkit. Format, validate, convert, and test APIs—all in your 
 - **Search** - JSONPath queries to find data quickly
 - **Share** - Generate shareable URLs (state stored in URL)
 
-## Quick Start
-
-```bash
-# Install dependencies
-pnpm install
-
-# Run dev server
-pnpm dev
-
-# Build for production
-pnpm build
-```
-
-Requires Node.js 18+.
-
-## Tech Stack
-
-Next.js 15 · React 19 · TypeScript · Tailwind CSS · shadcn/ui
-
-## Privacy
-
-All processing happens locally in your browser. No data is sent to any server.
-
----
 
 Built by [Arihant Jain](https://x.com/arihantCodes) · [Spectrum UI](https://ui.spectrumhq.in)
