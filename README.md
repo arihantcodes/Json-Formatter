@@ -18,6 +18,7 @@ All-in-one JSON toolkit. Format, validate, convert, and test APIs—all in your 
 - **Performance** - Benchmark API response times
 - **Search** - JSONPath queries to find data quickly
 - **Share** - Generate shareable URLs (state stored in URL)
+  
 
 
 Built by [Arihant Jain](https://x.com/arihantCodes) · [Spectrum UI](https://ui.spectrumhq.in)
