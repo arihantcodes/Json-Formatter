@@ -1,4 +1,4 @@
-<h1 align="center">JSON Formatter</h1>
+<h1 align="center">JSON Formatter by Spectrum UI</h1>
 
 ![JSON Formatter Tool](public/jsontool.png)
 
